@@ -20,7 +20,7 @@ Base.exports.PaperScript = (function() {
     var exports, define,
         // The scope into which the library is loaded.
         scope = this;
-/*#*/ include('../../bower_components/acorn/acorn.min.js', { exports: false });
+/*#*/ include('../../bower_components/acorn/acorn.js', { exports: false });
 
     // Operators to overload
 
