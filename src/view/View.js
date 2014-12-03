@@ -30,8 +30,7 @@ var View = Base.extend(Emitter, /** @lends View# */{
         this._element = element;
         var size;
 /*#*/ if (__options.environment == 'browser') {
-        if ( !inWorker ) {
-
+        if ( !noCanvas ) {
             // Sub-classes may set _pixelRatio first
             if (!this._pixelRatio)
                 this._pixelRatio = window.devicePixelRatio || 1;
@@ -99,6 +98,13 @@ var View = Base.extend(Emitter, /** @lends View# */{
                 style.top = offset.y + 'px';
                 document.body.appendChild(stats);
 
+        } else { // noCanvas === true
+            // Sub-classes may set _pixelRatio first
+            if (!this._pixelRatio)
+                this._pixelRatio = 1;
+            // Generate an id for this view
+            this._id = 'view-' + View._id++;
+            size = new Size(element.width, element.height);
         }
 /*#*/ } else if (__options.environment == 'node') {
         // Sub-classes may set _pixelRatio first
@@ -676,7 +682,7 @@ var View = Base.extend(Emitter, /** @lends View# */{
 }, new function() {
     // Injection scope for mouse events on the browser
 /*#*/ if (__options.environment == 'browser') {
-    if ( inWorker ) {
+    if ( noCanvas ) {
         return;
     }
 
