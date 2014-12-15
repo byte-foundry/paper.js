@@ -18,6 +18,6 @@ if (!Array.isArray) {
     };
 }
 
-if (!document.head) {
+if (!noCanvas && !document.head) {
     document.head = document.getElementsByTagName('head')[0];
 }
