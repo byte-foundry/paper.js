@@ -380,6 +380,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
         }
         this._name = name || undefined;
         this._changed(/*#=*/ChangeFlag.ATTRIBUTE);
+
+        return this;
     },
 
     /**
@@ -446,6 +448,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
         // Don't access _style directly so Path#getStyle() can be overriden for
         // CompoundPaths.
         this.getStyle().set(style);
+
+        return this;
     }
 }, Base.each(['locked', 'visible', 'blendMode', 'opacity', 'guide'],
     // Produce getter/setters for properties. We need setters because we want to
@@ -634,6 +638,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
             this._project._updateSelection(this);
             this._changed(/*#=*/Change.ATTRIBUTE);
         }
+
+        return this;
     },
 
     _selected: false,
@@ -657,7 +663,7 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
                 children[i].setFullySelected(selected);
         }
         // Pass true for hidden noChildren argument
-        this.setSelected(selected, true);
+        return this.setSelected(selected, true);
     },
 
     /**
@@ -686,6 +692,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
             if (this._parent)
                 this._parent._changed(/*#=*/ChangeFlag.CLIPPING);
         }
+
+        return this;
     },
 
     _clipMask: false,
@@ -737,6 +745,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
 
     setData: function(data) {
         this._data = data;
+
+        return this;
     },
 
     /**
@@ -803,6 +813,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
         // translate the item. Pass true for _dontLink, as we do not need a
         // LinkedPoint to simply calculate this distance.
         this.translate(Point.read(arguments).subtract(this.getPosition(true)));
+
+        return this;
     },
 
     /**
@@ -829,6 +841,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
         this._pivot = Point.read(arguments);
         // No need for _changed() since the only thing this affects is _position
         this._position = undefined;
+
+        return this;
     },
 
     _pivot: null,
@@ -930,7 +944,7 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
         center = bounds.getCenter();
         matrix.translate(-center.x, -center.y);
         // Now execute the transformation
-        this.transform(matrix);
+        return this.transform(matrix);
     },
 
     /**
@@ -1080,6 +1094,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
             decomposed.rotation = rotation;
             this._decomposed = decomposed;
         }
+
+        return this;
     },
 
     /**
@@ -1107,6 +1123,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
             decomposed.scaling = scaling;
             this._decomposed = decomposed;
         }
+
+        return this;
     },
 
     /**
@@ -1130,6 +1148,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
         } else {
             this._changed(/*#=*/Change.GEOMETRY);
         }
+
+        return this;
     },
 
     /**
@@ -1173,6 +1193,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
         // can be set to true.
         if (this._applyMatrix = this._canApplyMatrix && !!transform)
             this.transform(null, true);
+
+        return this;
     },
 
     /**
@@ -1364,6 +1386,8 @@ var Item = Base.extend(Emitter, /** @lends Item# */{
     setChildren: function(items) {
         this.removeChildren();
         this.addChildren(items);
+
+        return this;
     },
 
     /**
