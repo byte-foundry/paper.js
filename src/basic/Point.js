@@ -272,6 +272,7 @@ var Point = Base.extend(/** @lends Point# */{
                 this.y * scale
             );
         }
+        return this;
     },
     /**
      * Returns the smaller angle between two vectors. The angle is unsigned, no
@@ -295,6 +296,7 @@ var Point = Base.extend(/** @lends Point# */{
 
     setAngle: function(angle) {
         this.setAngleInRadians.call(this, angle * Math.PI / 180);
+        return this;
     },
 
     getAngleInDegrees: '#getAngle',
@@ -335,6 +337,7 @@ var Point = Base.extend(/** @lends Point# */{
                 return Math.acos(a < -1 ? -1 : a > 1 ? 1 : a);
             }
         }
+        return this;
     },
 
     setAngleInRadians: function(angle) {
@@ -352,6 +355,7 @@ var Point = Base.extend(/** @lends Point# */{
                 Math.sin(angle) * length
             );
         }
+        return this;
     },
 
     /**
@@ -956,6 +960,7 @@ var LinkedPoint = Point.extend({
     setX: function(x) {
         this._x = x;
         this._owner[this._setter](this);
+        return this;
     },
 
     getY: function() {
@@ -965,5 +970,6 @@ var LinkedPoint = Point.extend({
     setY: function(y) {
         this._y = y;
         this._owner[this._setter](this);
+        return this;
     }
 });
