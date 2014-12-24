@@ -291,6 +291,8 @@ var Path = PathItem.extend(/** @lends Path# */{
             // up-to-date and don't need notification.
             this._changed(/*#=*/Change.SEGMENTS);
         }
+
+        return this;
     }
 }, /** @lends Path# */{
     // Enforce bean creation for getPathData(), as it has hidden parameters.
@@ -895,6 +897,8 @@ var Path = PathItem.extend(/** @lends Path# */{
         if (selected)
             this._selectSegments(true);
         this.setSelected(selected);
+
+        return this;
     },
 
     setSelected: function setSelected(selected) {
@@ -903,6 +907,8 @@ var Path = PathItem.extend(/** @lends Path# */{
             this._selectSegments(false);
         // No need to pass true for noChildren since Path has none anyway.
         setSelected.base.call(this, selected);
+
+        return this;
     },
 
     _selectSegments: function(selected) {
@@ -967,6 +973,8 @@ var Path = PathItem.extend(/** @lends Path# */{
             pos += step;
         }
         this.setSegments(segments);
+
+        return this;
     },
 
     /**
@@ -988,6 +996,8 @@ var Path = PathItem.extend(/** @lends Path# */{
      * usage and speeding up drawing.
      *
      * @param {Number} [tolerance=2.5]
+     *
+     * @return {Path} the path being smoothed
      *
      * @example {@paperscript height=300}
      * // Click and drag below to draw to draw a line, when you release the
@@ -1027,6 +1037,8 @@ var Path = PathItem.extend(/** @lends Path# */{
             var fitter = new PathFitter(this, tolerance || 2.5);
             this.setSegments(fitter.fit());
         }
+
+        return this;
     },
 
     // TODO: reduceSegments([flatness])
@@ -1217,10 +1229,15 @@ var Path = PathItem.extend(/** @lends Path# */{
         // Reverse only flips _clockwise state if it was already set, so let's
         // always set this here now.
         this._clockwise = clockwise;
+
+        return this;
     },
 
     /**
      * Reverses the orientation of the path, by reversing all its segments.
+     *
+     * @return {Path} the reversed path
+     *
      */
     reverse: function() {
         this._segments.reverse();
@@ -1238,6 +1255,8 @@ var Path = PathItem.extend(/** @lends Path# */{
         if (this._clockwise !== undefined)
             this._clockwise = !this._clockwise;
         this._changed(/*#=*/Change.GEOMETRY);
+
+        return this;
     },
 
     // DOCS: document Path#join(path) in more detail.
@@ -1248,6 +1267,8 @@ var Path = PathItem.extend(/** @lends Path# */{
      * process.
      *
      * @param {Path} path
+     *
+     * @return {Path} the resulting path
      *
      * @example {@paperscript}
      * // Joining two paths:
@@ -1348,6 +1369,8 @@ var Path = PathItem.extend(/** @lends Path# */{
             last.remove();
             this.setClosed(true);
         }
+
+        return this;
     },
 
 
@@ -2318,6 +2341,8 @@ var Path = PathItem.extend(/** @lends Path# */{
             // beginning of a path, just bail out:
             if (!segments.length)
                 this._add([ new Segment(Point.read(arguments)) ]);
+
+            return this;
         },
 
         moveBy: function(/* point */) {
@@ -2327,6 +2352,8 @@ var Path = PathItem.extend(/** @lends Path# */{
         lineTo: function(/* point */) {
             // Let's not be picky about calling moveTo() first:
             this._add([ new Segment(Point.read(arguments)) ]);
+
+            return this;
         },
 
         cubicCurveTo: function(/* handle1, handle2, to */) {
@@ -2339,6 +2366,8 @@ var Path = PathItem.extend(/** @lends Path# */{
             current.setHandleOut(handle1.subtract(current._point));
             // And add the new segment, with handleIn set to c2
             this._add([ new Segment(to, handle2.subtract(to)) ]);
+
+            return this;
         },
 
         quadraticCurveTo: function(/* handle, to */) {
@@ -2355,6 +2384,8 @@ var Path = PathItem.extend(/** @lends Path# */{
                 handle.add(to.subtract(handle).multiply(1 / 3)),
                 to
             );
+
+            return this;
         },
 
         curveTo: function(/* through, to, parameter */) {
@@ -2371,6 +2402,8 @@ var Path = PathItem.extend(/** @lends Path# */{
                 throw new Error(
                     'Cannot put a curve through points with parameter = ' + t);
             this.quadraticCurveTo(handle, to);
+
+            return this;
         },
 
         arcTo: function(/* to, clockwise | through, to
@@ -2532,12 +2565,14 @@ var Path = PathItem.extend(/** @lends Path# */{
             }
             // Add all segments at once at the end for higher performance
             this._add(segments);
+
+            return this;
         },
 
         lineBy: function(/* to */) {
             var to = Point.read(arguments),
                 current = getCurrentSegment(this)._point;
-            this.lineTo(current.add(to));
+            return this.lineTo(current.add(to));
         },
 
         curveBy: function(/* through, to, parameter */) {
@@ -2545,7 +2580,7 @@ var Path = PathItem.extend(/** @lends Path# */{
                 to = Point.read(arguments),
                 parameter = Base.read(arguments),
                 current = getCurrentSegment(this)._point;
-            this.curveTo(current.add(through), current.add(to), parameter);
+            return this.curveTo(current.add(through), current.add(to), parameter);
         },
 
         cubicCurveBy: function(/* handle1, handle2, to */) {
@@ -2553,7 +2588,7 @@ var Path = PathItem.extend(/** @lends Path# */{
                 handle2 = Point.read(arguments),
                 to = Point.read(arguments),
                 current = getCurrentSegment(this)._point;
-            this.cubicCurveTo(current.add(handle1), current.add(handle2),
+            return this.cubicCurveTo(current.add(handle1), current.add(handle2),
                     current.add(to));
         },
 
@@ -2561,7 +2596,7 @@ var Path = PathItem.extend(/** @lends Path# */{
             var handle = Point.read(arguments),
                 to = Point.read(arguments),
                 current = getCurrentSegment(this)._point;
-            this.quadraticCurveTo(current.add(handle), current.add(to));
+            return this.quadraticCurveTo(current.add(handle), current.add(to));
         },
 
         // TODO: Implement version for: (to, radius, rotation, clockwise, large)
@@ -2571,17 +2606,17 @@ var Path = PathItem.extend(/** @lends Path# */{
                 // Peek at next value to see if it's clockwise, with true as
                 // default value.
                 clockwise = Base.pick(Base.peek(arguments), true);
-            if (typeof clockwise === 'boolean') {
-                this.arcTo(point, clockwise);
-            } else {
+            return typeof clockwise === 'boolean' ?
+                this.arcTo(point, clockwise):
                 this.arcTo(point, current.add(Point.read(arguments)));
-            }
         },
 
         closePath: function(join) {
             this.setClosed(true);
             if (join)
                 this.join();
+
+            return this;
         }
     };
 }, {  // A dedicated scope for the tricky bounds calculations
