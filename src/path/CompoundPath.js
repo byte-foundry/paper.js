@@ -29,7 +29,7 @@ var CompoundPath = PathItem.extend(/** @lends CompoundPath# */{
     /**
      * Creates a new compound path item and places it in the active layer.
      *
-     * @param {Path[]} [paths] the paths to place within the compound path
+     * @param {Path[]} [paths] the paths to place within the compound path.
      *
      * @example {@paperscript}
      * // Create a circle shaped path with a hole in it:
@@ -80,7 +80,7 @@ var CompoundPath = PathItem.extend(/** @lends CompoundPath# */{
      *
      * @name CompoundPath#initialize
      * @param {String} pathData the SVG path-data that describes the geometry
-     * of this path
+     * of this path.
      * @return {CompoundPath} the newly created path
      *
      * @example {@paperscript}
@@ -102,15 +102,6 @@ var CompoundPath = PathItem.extend(/** @lends CompoundPath# */{
     },
 
     insertChildren: function insertChildren(index, items, _preserve) {
-        // Convert CompoundPath items in the children list by adding their
-        // children to the list and removing their parent.
-        for (var i = items.length - 1; i >= 0; i--) {
-            var item = items[i];
-            if (item instanceof CompoundPath) {
-                items.splice.apply(items, [i, 1].concat(item.removeChildren()));
-                item.remove();
-            }
-        }
         // Pass on 'path' for _type, to make sure that only paths are added as
         // children.
         items = insertChildren.base.call(this, index, items, _preserve, Path);
@@ -140,52 +131,15 @@ var CompoundPath = PathItem.extend(/** @lends CompoundPath# */{
             this._children[i].smooth();
     },
 
-    // DOCS: reduce()
-    // TEST: reduce()
     reduce: function reduce() {
-        var children = this._children;
-        for (var i = children.length - 1; i >= 0; i--) {
-            var path = children[i].reduce();
-            if (path.isEmpty())
-                children.splice(i, 1);
-        }
-        if (children.length === 0) { // Replace with a simple empty Path
+        if (this._children.length === 0) { // Replace with a simple empty Path
             var path = new Path(Item.NO_INSERT);
             path.insertAbove(this);
             path.setStyle(this._style);
             this.remove();
             return path;
-        }
-        return reduce.base.call(this);
-    },
-
-    /**
-     * Interpolates between the specified {@code compoundpath0} and
-     * {@code compoundpath1} and use the result as the position and shape for
-     * the interpolated compoundpath1. The number of children in
-     * {@code compoundpath0}, {@code compoundpath1} and the interpolated
-     * compoundpath should be the same.
-     *
-     * @param {CompoundPath} compoundpath0 the position and shape of the
-     * compound path when {@code coef} is 0.
-     * @param {CompoundPath} compoundpath1 the position and shape of the
-     * compound path when {@code coef} is 1.
-     * @param {Number} coef the interpolation coefficient, typically between
-     * 0 and 1, but extrapolation is possible too.
-     */
-    interpolate: function(compoundpath0, compoundpath1, coef) {
-        for (var i = 0, l = this._children.length; i < l; i++) {
-            // The number of children should be the same everywhere,
-            // but we're going to try our best anyway
-            if ( !compoundpath0._children[i] || !compoundpath1._children[i] ) {
-                break;
-            }
-
-            this._children[i].interpolate(
-                compoundpath0._children[i],
-                compoundpath1._children[i],
-                coef
-            );
+        } else {
+            return reduce.call(this);
         }
     },
 
@@ -266,8 +220,8 @@ var CompoundPath = PathItem.extend(/** @lends CompoundPath# */{
     },
 
     /**
-     * The area that the path's geometry is covering. Self-intersecting paths
-     * can contain sub-areas that cancel each other out.
+     * The area of the path in square points. Self-intersecting paths can
+     * contain sub-areas that cancel each other out.
      *
      * @type Number
      * @bean
@@ -291,7 +245,7 @@ var CompoundPath = PathItem.extend(/** @lends CompoundPath# */{
             var child = children[i],
                 mx = child._matrix;
             paths.push(child.getPathData(_matrix && !mx.isIdentity()
-                    ? _matrix.chain(mx) : _matrix, _precision));
+                    ? _matrix.chain(mx) : mx, _precision));
         }
         return paths.join(' ');
     }
@@ -344,8 +298,7 @@ var CompoundPath = PathItem.extend(/** @lends CompoundPath# */{
                         : matrix.chain(mx));
         }
     }
-},
-new function() { // Injection scope for PostScript-like drawing functions
+}, new function() { // Injection scope for PostScript-like drawing functions
     /**
      * Helper method that returns the current path and checks if a moveTo()
      * command is required first.
@@ -364,8 +317,7 @@ new function() { // Injection scope for PostScript-like drawing functions
         moveTo: function(/* point */) {
             var current = getCurrentPath(this),
                 // Reuse current path if nothing was added yet
-                path = current && current.isEmpty() ? current
-                        : new Path(Item.NO_INSERT);
+                path = current && current.isEmpty() ? current : new Path();
             if (path !== current)
                 this.addChild(path);
             path.moveTo.apply(path, arguments);
