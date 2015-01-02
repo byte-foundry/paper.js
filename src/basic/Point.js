@@ -218,7 +218,7 @@ var Point = Base.extend(/** @lends Point# */{
      * var point2 = point1.clone();
      * point2.x = 1; // doesn't change point1.x
      *
-     * @return {Point} the cloned point
+     * @returns {Point} the cloned point
      */
     clone: function() {
         return new Point(this.x, this.y);
@@ -410,7 +410,7 @@ var Point = Base.extend(/** @lends Point# */{
      *
      * @param {Point} point
      * @param {Boolean} [squared=false] Controls whether the distance should
-     * remain squared, or its square root should be calculated
+     *        remain squared, or its square root should be calculated.
      * @return {Number}
      */
     getDistance: function(/* point, squared */) {
@@ -430,7 +430,7 @@ var Point = Base.extend(/** @lends Point# */{
      *
      * @param {Number} [length=1] The length of the normalized vector
      * @return {Point} the normalized vector of the vector that is represented
-     * by this point's coordinates
+     *                 by this point's coordinates
      */
     normalize: function(length) {
         if (length === undefined)
@@ -453,18 +453,18 @@ var Point = Base.extend(/** @lends Point# */{
      *
      * @param {Number} angle the rotation angle
      * @param {Point} center the center point of the rotation
-     * @return {Point} the rotated point
+     * @returns {Point} the rotated point
      */
     rotate: function(angle, center) {
         if (angle === 0)
             return this.clone();
         angle = angle * Math.PI / 180;
         var point = center ? this.subtract(center) : this,
-            sin = Math.sin(angle),
-            cos = Math.cos(angle);
+            s = Math.sin(angle),
+            c = Math.cos(angle);
         point = new Point(
-            point.x * cos - point.y * sin,
-            point.x * sin + point.y * cos
+            point.x * c - point.y * s,
+            point.x * s + point.y * c
         );
         return center ? point.add(center) : point;
     },
@@ -641,7 +641,7 @@ var Point = Base.extend(/** @lends Point# */{
      * @operator
      * @param {Number} value
      * @return {Point} the integer remainders of dividing the point by the value
-     * as a new point
+     *                 as a new point
      *
      * @example
      * var point = new Point(12, 6);
@@ -656,7 +656,7 @@ var Point = Base.extend(/** @lends Point# */{
      * @operator
      * @param {Point} point
      * @return {Point} the integer remainders of dividing the points by each
-     * other as a new point
+     *                 other as a new point
      *
      * @example
      * var point = new Point(12, 6);
@@ -677,7 +677,7 @@ var Point = Base.extend(/** @lends Point# */{
      * Checks whether the point is inside the boundaries of the rectangle.
      *
      * @param {Rectangle} rect the rectangle to check against
-     * @return {Boolean} {@true if the point is inside the rectangle}
+     * @returns {Boolean} {@true if the point is inside the rectangle}
      */
     isInside: function(/* rect */) {
         return Rectangle.read(arguments).contains(this);
@@ -688,45 +688,38 @@ var Point = Base.extend(/** @lends Point# */{
      *
      * @param {Point} point the point to check against
      * @param {Number} tolerance the maximum distance allowed
-     * @return {Boolean} {@true if it is within the given distance}
+     * @returns {Boolean} {@true if it is within the given distance}
      */
-    isClose: function(/* point, tolerance */) {
-        var point = Point.read(arguments),
-            tolerance = Base.read(arguments);
+    isClose: function(point, tolerance) {
         return this.getDistance(point) < tolerance;
     },
 
     /**
-     * Checks if the vector represented by this point is collinear (parallel) to
+     * Checks if the vector represented by this point is colinear (parallel) to
      * another vector.
      *
      * @param {Point} point the vector to check against
-     * @return {Boolean} {@true it is collinear}
+     * @returns {Boolean} {@true it is colinear}
      */
-    isCollinear: function(/* point */) {
-        var point = Point.read(arguments);
-        return Point.isCollinear(this.x, this.y, point.x, point.y);
+    isColinear: function(point) {
+        return Math.abs(this.cross(point)) < /*#=*/Numerical.EPSILON;
     },
-
-    // TODO: Remove version with typo after a while (deprecated June 2015)
-    isColinear: '#isCollinear',
 
     /**
      * Checks if the vector represented by this point is orthogonal
      * (perpendicular) to another vector.
      *
      * @param {Point} point the vector to check against
-     * @return {Boolean} {@true it is orthogonal}
+     * @returns {Boolean} {@true it is orthogonal}
      */
-    isOrthogonal: function(/* point */) {
-        var point = Point.read(arguments);
-        return Point.isOrthogonal(this.x, this.y, point.x, point.y);
+    isOrthogonal: function(point) {
+        return Math.abs(this.dot(point)) < /*#=*/Numerical.EPSILON;
     },
 
     /**
      * Checks if this point has both the x and y coordinate set to 0.
      *
-     * @return {Boolean} {@true if both x and y are 0}
+     * @returns {Boolean} {@true if both x and y are 0}
      */
     isZero: function() {
         return Numerical.isZero(this.x) && Numerical.isZero(this.y);
@@ -736,7 +729,7 @@ var Point = Base.extend(/** @lends Point# */{
      * Checks if this point has an undefined value for at least one of its
      * coordinates.
      *
-     * @return {Boolean} {@true if either x or y are not a number}
+     * @returns {Boolean} {@true if either x or y are not a number}
      */
     isNaN: function() {
         return isNaN(this.x) || isNaN(this.y);
@@ -747,7 +740,7 @@ var Point = Base.extend(/** @lends Point# */{
      * Returns the dot product of the point and another point.
      *
      * @param {Point} point
-     * @return {Number} the dot product of the two points
+     * @returns {Number} the dot product of the two points
      */
     dot: function(/* point */) {
         var point = Point.read(arguments);
@@ -758,7 +751,7 @@ var Point = Base.extend(/** @lends Point# */{
      * Returns the cross product of the point and another point.
      *
      * @param {Point} point
-     * @return {Number} the cross product of the two points
+     * @returns {Number} the cross product of the two points
      */
     cross: function(/* point */) {
         var point = Point.read(arguments);
@@ -766,19 +759,23 @@ var Point = Base.extend(/** @lends Point# */{
     },
 
     /**
-     * Returns the projection of the point onto another point.
+     * Returns the projection of the point on another point.
      * Both points are interpreted as vectors.
      *
      * @param {Point} point
-     * @return {Point} the projection of the point onto another point
+     * @returns {Point} the projection of the point on another point
      */
     project: function(/* point */) {
-        var point = Point.read(arguments),
-            scale = point.isZero() ? 0 : this.dot(point) / point.dot(point);
-        return new Point(
-            point.x * scale,
-            point.y * scale
-        );
+        var point = Point.read(arguments);
+        if (point.isZero()) {
+            return new Point(0, 0);
+        } else {
+            var scale = this.dot(point) / point.dot(point);
+            return new Point(
+                point.x * scale,
+                point.y * scale
+            );
+        }
     },
 
     /**
@@ -858,7 +855,7 @@ var Point = Base.extend(/** @lends Point# */{
          * @static
          * @param {Point} point1
          * @param {Point} point2
-         * @return {Point} the newly created point object
+         * @returns {Point} the newly created point object
          *
          * @example
          * var point1 = new Point(10, 100);
@@ -882,7 +879,7 @@ var Point = Base.extend(/** @lends Point# */{
          * @static
          * @param {Point} point1
          * @param {Point} point2
-         * @return {Point} the newly created point object
+         * @returns {Point} the newly created point object
          *
          * @example
          * var point1 = new Point(10, 100);
@@ -903,7 +900,7 @@ var Point = Base.extend(/** @lends Point# */{
          * Returns a point object with random {@link #x} and {@link #y} values
          * between {@code 0} and {@code 1}.
          *
-         * @return {Point} the newly created point object
+         * @returns {Point} the newly created point object
          * @static
          *
          * @example
@@ -915,23 +912,6 @@ var Point = Base.extend(/** @lends Point# */{
          */
         random: function() {
             return new Point(Math.random(), Math.random());
-        },
-
-        isCollinear: function(x1, y1, x2, y2) {
-            // NOTE: We use normalized vectors so that the epsilon comparison is
-            // reliable. We could instead scale the epsilon based on the vector
-            // length. But instead of normalizing the vectors before calculating
-            // the cross product, we can scale the epsilon accordingly.
-            return Math.abs(x1 * y2 - y1 * x2)
-                    <= Math.sqrt((x1 * x1 + y1 * y1) * (x2 * x2 + y2 * y2))
-                        * /*#=*/Numerical.TRIGONOMETRIC_EPSILON;
-        },
-
-        isOrthogonal: function(x1, y1, x2, y2) {
-            // See Point.isCollinear()
-            return Math.abs(x1 * x2 + y1 * y2)
-                    <= Math.sqrt((x1 * x1 + y1 * y1) * (x2 * x2 + y2 * y2))
-                        * /*#=*/Numerical.TRIGONOMETRIC_EPSILON;
         }
     }
 }, Base.each(['round', 'ceil', 'floor', 'abs'], function(name) {
