@@ -60,77 +60,49 @@ var Numerical = new function() {
     var abs = Math.abs,
         sqrt = Math.sqrt,
         pow = Math.pow,
-        EPSILON = 1e-12,
+        cos = Math.cos,
+        PI = Math.PI,
+        isFinite = Number.isFinite,
+        TOLERANCE = 1e-5,
+        EPSILON = 1e-11,
         MACHINE_EPSILON = 1.12e-16;
 
-    function clip(value, min, max) {
-        return value < min ? min : value > max ? max : value;
-    }
-
     return /** @lends Numerical */{
-        TOLERANCE: 1e-6,
+        TOLERANCE: TOLERANCE,
+        // Precision when comparing against 0
+        // References:
+        //  http://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
+        //  http://www.cs.berkeley.edu/~wkahan/Math128/Cubic.pdf
         /**
          * A very small absolute value used to check if a value is very close to
          * zero. The value should be large enough to offset any floating point
          * noise, but small enough to be meaningful in computation in a nominal
          * range (see MACHINE_EPSILON).
-         *
-         * http://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
-         * http://www.cs.berkeley.edu/~wkahan/Math128/Cubic.pdf
          */
         EPSILON: EPSILON,
         /**
-         * The machine epsilon for a double precision (Javascript Number) is
-         * 2.220446049250313e-16. (try this in the js console:
+         * MACHINE_EPSILON for a double precision (Javascript Number) is
+         * 2.220446049250313e-16. (try this in the js console)
          *     (function(){for(var e=1;1<1+e/2;)e/=2;return e}())
          *
-         * The constant MACHINE_EPSILON here refers to the constants δ and ε
-         * such that, the error introduced by addition, multiplication on a
-         * 64bit float (js Number) will be less than δ and ε. That is to say,
-         * for all X and Y representable by a js Number object, S and P be their
-         * 'exact' sum and product respectively, then
+         * Here the constant MACHINE_EPSILON refers to the constants 'δ' and 'ε'
+         * such that, the error introduced by addition, multiplication
+         * on a 64bit float (js Number) will be less than δ and ε. That is to
+         * say, for all X and Y representable by a js Number object, S and P
+         * be their 'exact' sum and product respectively, then
          * |S - (x+y)| <= δ|S|, and |P - (x*y)| <= ε|P|.
-         * This amounts to about half of the actual machine epsilon.
+         * This amounts to about half of the actual MACHINE_EPSILON
          */
         MACHINE_EPSILON: MACHINE_EPSILON,
-        /**
-         * The epsilon to be used when handling curve-time parameters. This
-         * cannot be smaller, because errors add up to around 2e-7 in the bezier
-         * fat-line clipping code as a result of recursive sub-division.
-         */
-        CURVETIME_EPSILON: 4e-7, // NOTE: 2e-7 doesn't work in some edge-cases!
-        /**
-         * The epsilon to be used when performing "geometric" checks, such as
-         * distances between points and lines.
-         */
-        GEOMETRIC_EPSILON: 2e-7,
-        /**
-         * The epsilon to be used when performing winding contribution checks.
-         */
-        WINDING_EPSILON: 2e-7, // NOTE: 1e-7 doesn't work in some edge-cases!
-        /**
-         * The epsilon to be used when performing "trigonometric" checks, such
-         * as examining cross products to check for collinearity.
-         */
-        TRIGONOMETRIC_EPSILON: 1e-7,
-        /**
-         * The epsilon to be used in the fat-line clipping code.
-         */
-        CLIPPING_EPSILON: 1e-7,
-        /**
-         * Kappa is the value which which to scale the curve handles when
-         * drawing a circle with bezier curves.
-         *
-         * http://whizkidtech.redprince.net/bezier/circle/kappa/
-         */
+        // Kappa, see: http://www.whizkidtech.redprince.net/bezier/circle/kappa/
         KAPPA: 4 * (sqrt(2) - 1) / 3,
 
         /**
-         * Checks if the value is 0, within a tolerance defined by
+         * Check if the value is 0, within a tolerance defined by
          * Numerical.EPSILON.
          */
         isZero: function(val) {
-            return val >= -EPSILON && val <= EPSILON;
+            return abs(val) <= EPSILON;
         },
 
         /**
@@ -189,42 +161,42 @@ var Numerical = new function() {
          *
          * References:
          *  Kahan W. - "To Solve a Real Cubic Equation"
-         *  http://www.cs.berkeley.edu/~wkahan/Math128/Cubic.pdf
+         *   http://www.cs.berkeley.edu/~wkahan/Math128/Cubic.pdf
          *  Blinn J. - "How to solve a Quadratic Equation"
          *
-         * @param {Number} a the quadratic term
-         * @param {Number} b the linear term
-         * @param {Number} c the constant term
-         * @param {Number[]} roots the array to store the roots in
-         * @param {Number} [min] the lower bound of the allowed roots
-         * @param {Number} [max] the upper bound of the allowed roots
+         * @param {Number} a The quadratic term.
+         * @param {Number} b The linear term.
+         * @param {Number} c The constant term.
+         * @param {Number[]} roots The array to store the roots in.
          * @return {Number} The number of real roots found, or -1 if there are
-         * infinite solutions
+         * infinite solutions.
          *
          * @author Harikrishnan Gopalakrishnan
          */
         solveQuadratic: function(a, b, c, roots, min, max) {
-            var count = 0,
-                eMin = min - EPSILON,
-                eMax = max + EPSILON,
+            var nRoots = 0,
                 x1, x2 = Infinity,
                 B = b,
                 D;
-            // a, b, c are expected to be the coefficients of the equation:
-            // Ax² - 2Bx + C == 0, so we take b = -B/2:
-            b /= -2;
-            D = b * b - a * c; // Discriminant
-            // If the discriminant is very small, we can try to pre-condition
-            // the coefficients, so that we may get better accuracy
-            if (D !== 0 && abs(D) < MACHINE_EPSILON) {
+            b /= 2;
+            D = b * b - a * c;          // Discriminant
+            /*
+             * If the discriminant is very small, we can try to pre-condition
+             * the coefficients, so that we may get better accuracy
+             */
+            if (abs(D) < MACHINE_EPSILON) {
                 // If the geometric mean of the coefficients is small enough
-                var gmC = pow(abs(a * b * c), 1 / 3);
+                var pow = Math.pow,
+                    gmC = pow(abs(a*b*c), 1/3);
                 if (gmC < 1e-8) {
-                    // We multiply with a factor to normalize the coefficients.
-                    // The factor is just the nearest exponent of 10, big enough
-                    // to raise all the coefficients to nearly [-1, +1] range.
-                    var mult = pow(10,
-                            abs(Math.floor(Math.log(gmC) * Math.LOG10E)));
+                    /*
+                     * we multiply with a factor to normalize the
+                     * coefficients. The factor is just the nearest exponent
+                     * of 10, big enough to raise all the coefficients to
+                     * nearly [-1, +1] range.
+                     */
+                    var mult = pow(10, abs(
+                        Math.floor(Math.log(gmC) * Math.LOG10E)));
                     if (!isFinite(mult))
                         mult = 0;
                     a *= mult;
@@ -234,31 +206,38 @@ var Numerical = new function() {
                     D = b * b - a * c;
                 }
             }
-            if (abs(a) < EPSILON) {
+            if (abs(a) < MACHINE_EPSILON) {
                 // This could just be a linear equation
-                if (abs(B) < EPSILON)
-                    return abs(c) < EPSILON ? -1 : 0;
+                if (abs(B) < MACHINE_EPSILON)
+                    return abs(c) < MACHINE_EPSILON ? -1 : 0;
                 x1 = -c / B;
-            } else if (D >= -MACHINE_EPSILON) { // No real roots if D < 0
-                var Q = D < 0 ? 0 : sqrt(D),
-                    R = b + (b < 0 ? -Q : Q);
-                // Try to minimize floating point noise.
-                if (R === 0) {
-                    x1 = c / a;
-                    x2 = -x1;
-                } else {
-                    x1 = R / a;
-                    x2 = c / R;
+            } else {
+                // No real roots if D < 0
+                if (D >= -MACHINE_EPSILON) {
+                    D = D < 0 ? 0 : D;
+                    var R = sqrt(D);
+                    // Try to minimise floating point noise.
+                    if (b >= MACHINE_EPSILON && b <= MACHINE_EPSILON) {
+                        x1 = abs(a) >= abs(c) ? R / a : -c / R;
+                        x2 = -x1;
+                    } else {
+                        var q = -(b + (b < 0 ? -1 : 1) * R);
+                        x1 = q / a;
+                        x2 = c / q;
+                    }
+                    // Do we actually have two real roots?
+                    // nRoots = D > MACHINE_EPSILON ? 2 : 1;
                 }
             }
-            // We need to include EPSILON in the comparisons with min / max,
-            // as some solutions are ever so lightly out of bounds.
-            if (isFinite(x1) && (min == null || x1 > eMin && x1 < eMax))
-                roots[count++] = min == null ? x1 : clip(x1, min, max);
-            if (x2 !== x1
-                    && isFinite(x2) && (min == null || x2 > eMin && x2 < eMax))
-                roots[count++] = min == null ? x2 : clip(x2, min, max);
-            return count;
+            var unbound = min == null,
+                minE = min - MACHINE_EPSILON,
+                maxE = max + MACHINE_EPSILON;
+            if (isFinite(x1) && (unbound || (x1 >= minE && x1 <= maxE)))
+                roots[nRoots++] = x1 < min ? min : x1 > max ? max : x1;
+            if (x2 !== x1 && isFinite(x2)
+                    && (unbound || (x2 >= minE && x2 <= maxE)))
+                roots[nRoots++] = x2 < min ? min : x2 > max ? max : x2;
+            return nRoots;
         },
 
         /**
@@ -278,32 +257,31 @@ var Numerical = new function() {
          * W. Kahan's paper contains inferences on accuracy of cubic
          * zero-finding methods. Also testing methods for robustness.
          *
-         * @param {Number} a the cubic term (x³ term)
-         * @param {Number} b the quadratic term (x² term)
-         * @param {Number} c the linear term (x term)
-         * @param {Number} d the constant term
-         * @param {Number[]} roots the array to store the roots in
-         * @param {Number} [min] the lower bound of the allowed roots
-         * @param {Number} [max] the upper bound of the allowed roots
-         * @return {Number} the number of real roots found, or -1 if there are
-         * infinite solutions
+         * @param {Number} a The cubic term (x³ term).
+         * @param {Number} b The quadratic term (x² term).
+         * @param {Number} c The linear term (x term).
+         * @param {Number} d The constant term.
+         * @param {Number[]} roots The array to store the roots in.
+         * @return {Number} The number of real roots found, or -1 if there are
+         * infinite solutions.
          *
          * @author Harikrishnan Gopalakrishnan
          */
         solveCubic: function(a, b, c, d, roots, min, max) {
-            var count = 0,
-                x, b1, c2;
-            // If a or d is zero, we only need to solve a quadratic, so we set
-            // the coefficients appropriately.
-            if (abs(a) < EPSILON) {
-                a = b;
-                b1 = c;
-                c2 = d;
-                x = Infinity;
-            } else if (abs(d) < EPSILON) {
-                b1 = b;
-                c2 = c;
-                x = 0;
+            var x, b1, c2, nRoots = 0;
+            if (a === 0 || d ===0) {
+                // We only need to solve a quadratic.
+                // So we set the coefficients appropriately.
+                if (a === 0) {
+                    a = b;
+                    b1 = c;
+                    c2 = d;
+                    x = Infinity;
+                } else {
+                    b1 = b;
+                    c2 = c;
+                    x = 0;
+                }
             } else {
                 var ec = 1 + MACHINE_EPSILON, // 1.000...002
                     x0, q, qd, t, r, s, tmp;
@@ -312,10 +290,10 @@ var Numerical = new function() {
                 // iteration) and solve the quadratic.
                 x = -(b / a) / 3;
                 // Evaluate q, q', b1 and c2 at x
-                tmp = a * x;
-                b1 = tmp + b;
-                c2 = b1 * x + c;
-                qd = (tmp + b1) * x + c2;
+                tmp = a * x,
+                b1 = tmp + b,
+                c2 = b1 * x + c,
+                qd = (tmp + b1) * x + c2,
                 q = c2 * x + d;
                 // Get a good initial approximation.
                 t = q /a;
@@ -329,10 +307,10 @@ var Numerical = new function() {
                     do {
                         x = x0;
                         // Evaluate q, q', b1 and c2 at x
-                        tmp = a * x;
-                        b1 = tmp + b;
-                        c2 = b1 * x + c;
-                        qd = (tmp + b1) * x + c2;
+                        tmp = a * x,
+                        b1 = tmp + b,
+                        c2 = b1 * x + c,
+                        qd = (tmp + b1) * x + c2,
                         q = c2 * x + d;
                         // Newton's. Divide by ec to avoid x0 crossing over a
                         // root.
@@ -350,11 +328,12 @@ var Numerical = new function() {
                 }
             }
             // The cubic has been deflated to a quadratic.
-            var count = Numerical.solveQuadratic(a, b1, c2, roots, min, max);
-            if (isFinite(x) && (count === 0 || x !== roots[count - 1])
-                    && (min == null || x > min - EPSILON && x < max + EPSILON))
-                roots[count++] = min == null ? x : clip(x, min, max);
-            return count;
+            var nRoots = Numerical.solveQuadratic(a, b1, c2, roots, min, max);
+            if (isFinite(x) && (nRoots === 0 || x !== roots[nRoots - 1])
+                    && (min == null || (x >= min - MACHINE_EPSILON
+                        && x <= max + MACHINE_EPSILON)))
+                roots[nRoots++] = x < min ? min : x > max ? max : x;
+            return nRoots;
         }
     };
 };
