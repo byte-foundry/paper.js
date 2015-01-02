@@ -30,83 +30,83 @@ var View = Base.extend(Emitter, /** @lends View# */{
         this._element = element;
         var size;
 /*#*/ if (__options.environment == 'browser') {
-        if ( !noCanvas ) {
-            // Sub-classes may set _pixelRatio first
-            if (!this._pixelRatio)
-                this._pixelRatio = window.devicePixelRatio || 1;
-            // Generate an id for this view / element if it does not have one
-            this._id = element.getAttribute('id');
-            if (this._id == null)
-                element.setAttribute('id', this._id = 'view-' + View._id++);
-            // Install event handlers
-            DomEvent.add(element, this._viewEvents);
-            // Borrowed from Hammer.js:
-            var none = 'none';
-            DomElement.setPrefixed(element.style, {
-                userSelect: none,
-                // This makes the element blocking in IE10+
-                // You could experiment with the value, see this issue:
-                // https://github.com/EightMedia/hammer.js/issues/241
-                touchAction: none,
-                touchCallout: none,
-                contentZooming: none,
-                userDrag: none,
-                tapHighlightColor: 'rgba(0,0,0,0)'
-            });
+       if ( !noCanvas ) {
+        // Sub-classes may set _pixelRatio first
+        if (!this._pixelRatio)
+            this._pixelRatio = window.devicePixelRatio || 1;
+        // Generate an id for this view / element if it does not have one
+        this._id = element.getAttribute('id');
+        if (this._id == null)
+            element.setAttribute('id', this._id = 'view-' + View._id++);
+        // Install event handlers
+        DomEvent.add(element, this._viewEvents);
+        // Borrowed from Hammer.js:
+        var none = 'none';
+        DomElement.setPrefixed(element.style, {
+            userSelect: none,
+            // This makes the element blocking in IE10+
+            // You could experiment with the value, see this issue:
+            // https://github.com/EightMedia/hammer.js/issues/241
+            touchAction: none,
+            touchCallout: none,
+            contentZooming: none,
+            userDrag: none,
+            tapHighlightColor: 'rgba(0,0,0,0)'
+        });
 
-            function getSize(name) {
-                return element[name] || parseInt(element.getAttribute(name), 10);
-            }
-
-            function getCanvasSize() {
-                // Try visible size first, since that will help handling previously
-                // scaled canvases (e.g. when dealing with pixel-ratio)
-                var size = DomElement.getSize(element);
-                return size.isNaN() || size.isZero()
-                        // If the element is invisible, we cannot directly access
-                        // element.width / height, because they would appear 0.
-                        // Reading the attributes should still work.
-                        ? new Size(getSize('width'), getSize('height'))
-                        : size;
-            }
-
-            // If the element has the resize attribute, listen to resize events and
-            // update its coordinate space accordingly
-            if (PaperScope.hasAttribute(element, 'resize')) {
-                var that = this;
-                DomEvent.add(window, this._windowEvents = {
-                    resize: function() {
-                        that.setViewSize(getCanvasSize());
-                    }
-                });
-            }
-            // Set canvas size even if we just determined the size from it, since
-            // it might have been set to a % size, in which case it would use some
-            // default internal size (300x150 on WebKit) and scale up the pixels.
-            // We also need this call here for HiDPI support.
-            this._setViewSize(size = getCanvasSize());
-            // TODO: Test this on IE:
-            if (PaperScope.hasAttribute(element, 'stats')
-                    && typeof Stats !== 'undefined') {
-                this._stats = new Stats();
-                // Align top-left to the element
-                var stats = this._stats.domElement,
-                    style = stats.style,
-                    offset = DomElement.getOffset(element);
-                style.position = 'absolute';
-                style.left = offset.x + 'px';
-                style.top = offset.y + 'px';
-                document.body.appendChild(stats);
-            }
-
-        } else { // noCanvas === true
-            // Sub-classes may set _pixelRatio first
-            if (!this._pixelRatio)
-                this._pixelRatio = 1;
-            // Generate an id for this view
-            this._id = 'view-' + View._id++;
-            size = new Size(element.width, element.height);
+        function getSize(name) {
+            return element[name] || parseInt(element.getAttribute(name), 10);
         }
+
+        function getCanvasSize() {
+            // Try visible size first, since that will help handling previously
+            // scaled canvases (e.g. when dealing with pixel-ratio)
+            var size = DomElement.getSize(element);
+            return size.isNaN() || size.isZero()
+                    // If the element is invisible, we cannot directly access
+                    // element.width / height, because they would appear 0.
+                    // Reading the attributes should still work.
+                    ? new Size(getSize('width'), getSize('height'))
+                    : size;
+        }
+
+        // If the element has the resize attribute, listen to resize events and
+        // update its coordinate space accordingly
+        if (PaperScope.hasAttribute(element, 'resize')) {
+            var that = this;
+            DomEvent.add(window, this._windowEvents = {
+                resize: function() {
+                    that.setViewSize(getCanvasSize());
+                }
+            });
+        }
+        // Set canvas size even if we just determined the size from it, since
+        // it might have been set to a % size, in which case it would use some
+        // default internal size (300x150 on WebKit) and scale up the pixels.
+        // We also need this call here for HiDPI support.
+        this._setViewSize(size = getCanvasSize());
+        // TODO: Test this on IE:
+        if (PaperScope.hasAttribute(element, 'stats')
+                && typeof Stats !== 'undefined') {
+            this._stats = new Stats();
+            // Align top-left to the element
+            var stats = this._stats.domElement,
+                style = stats.style,
+                offset = DomElement.getOffset(element);
+            style.position = 'absolute';
+            style.left = offset.x + 'px';
+            style.top = offset.y + 'px';
+            document.body.appendChild(stats);
+        }
+
+       } else { // noCanvas === true
+        // Sub-classes may set _pixelRatio first
+        if (!this._pixelRatio)
+            this._pixelRatio = 1;
+        // Generate an id for this view
+        this._id = 'view-' + View._id++;
+        size = new Size(element.width, element.height);
+       }
 /*#*/ } else if (__options.environment == 'node') {
         // Sub-classes may set _pixelRatio first
         if (!this._pixelRatio)
@@ -159,27 +159,29 @@ var View = Base.extend(Emitter, /** @lends View# */{
         return true;
     },
 
-    /**
-     * @namespace
-     * @ignore
-     */
-    _events: {
-        /**
-         * @namespace
-         * @ignore
-         */
-        onFrame: {
-            install: function() {
-                this.play();
-            },
+    _events: Base.each(['onResize', 'onMouseDown', 'onMouseUp', 'onMouseMove'],
+        function(name) {
+            this[name] = {
+                install: function(type) {
+                    this._installEvent(type);
+                },
 
-            uninstall: function() {
-                this.pause();
+                uninstall: function(type) {
+                    this._uninstallEvent(type);
+                }
+            };
+        }, {
+            onFrame: {
+                install: function() {
+                    this.play();
+                },
+
+                uninstall: function() {
+                    this.pause();
+                }
             }
-        },
-
-        onResize: {}
-    },
+        }
+    ),
 
     // These are default values for event related properties on the prototype.
     // Writing item._count++ does not change the defaults, it creates / updates
@@ -277,7 +279,7 @@ var View = Base.extend(Emitter, /** @lends View# */{
      * Private notifier that is called whenever a change occurs in this view.
      * Used only by Matrix for now.
      *
-     * @param {ChangeFlag} flags describes what exactly has changed.
+     * @param {ChangeFlag} flags describes what exactly has changed
      */
     _changed: function(flags) {
         if (flags & /*#=*/ChangeFlag.APPEARANCE)
@@ -423,7 +425,7 @@ var View = Base.extend(Emitter, /** @lends View# */{
      * Checks whether the view is currently visible within the current browser
      * viewport.
      *
-     * @return {Boolean} whether the view is visible.
+     * @return {Boolean} whether the view is visible
      */
     isVisible: function() {
         return DomElement.isInView(this._element);
@@ -467,8 +469,11 @@ var View = Base.extend(Emitter, /** @lends View# */{
      *
      * @name View#update
      * @function
+     * @param {Boolean} [force=false] {@true if the view should be updated even
+     * if no change has happened}
+     * @return {Boolean} {@true if the view was updated}
      */
-    // update: function() {
+    // update: function(force) {
     // },
 
     /**
@@ -511,11 +516,11 @@ var View = Base.extend(Emitter, /** @lends View# */{
      * the frame event:
      *
      * @option event.count {Number} the number of times the frame event was
-     * fired.
+     * fired
      * @option event.time {Number} the total amount of time passed since the
-     * first frame event in seconds.
-     * @code event.delta {Number} the time passed in seconds since the last
-     * frame event.
+     * first frame event in seconds
+     * @option event.delta {Number} the time passed in seconds since the last
+     * frame event
      *
      * @example {@paperscript}
      * // Creating an animation:
@@ -585,7 +590,7 @@ var View = Base.extend(Emitter, /** @lends View# */{
      * @name View#on
      * @function
      * @param {Object} param an object literal containing one or more of the
-     * following properties: {@code frame, resize}.
+     * following properties: {@code frame, resize}
      * @return {View} this view itself, so calls can be chained
      *
      * @example {@paperscript}
@@ -651,7 +656,7 @@ var View = Base.extend(Emitter, /** @lends View# */{
      * @function
      * @param {String('frame', 'resize')} type the event type
      * @param {Object} event an object literal containing properties describing
-     * the event.
+     * the event
      * @return {Boolean} {@true if the event had listeners}
      */
 
@@ -680,8 +685,8 @@ var View = Base.extend(Emitter, /** @lends View# */{
             return new CanvasView(project, element);
         }
     }
-}, new function() {
-    // Injection scope for mouse events on the browser
+},
+new function() { // Injection scope for mouse events on the browser
 /*#*/ if (__options.environment == 'browser') {
     if ( noCanvas ) {
         return;
@@ -839,11 +844,57 @@ var View = Base.extend(Emitter, /** @lends View# */{
         load: updateFocus
     });
 
+    // Flags defining which native events are required by which Paper events
+    // as required for counting amount of necessary natives events.
+    // The mapping is native -> virtual
+    var mouseFlags = {
+        mousedown: {
+            mousedown: 1,
+            mousedrag: 1,
+            click: 1,
+            doubleclick: 1
+        },
+        mouseup: {
+            mouseup: 1,
+            mousedrag: 1,
+            click: 1,
+            doubleclick: 1
+        },
+        mousemove: {
+            mousedrag: 1,
+            mousemove: 1,
+            mouseenter: 1,
+            mouseleave: 1
+        }
+    };
+
     return {
         _viewEvents: viewEvents,
 
         // To be defined in subclasses
         _handleEvent: function(/* type, point, event */) {},
+
+        _installEvent: function(type) {
+            // If the view requires counting of installed mouse events,
+            // increase the counters now according to mouseFlags
+            var counters = this._eventCounters;
+            if (counters) {
+                for (var key in mouseFlags) {
+                    counters[key] = (counters[key] || 0)
+                            + (mouseFlags[key][type] || 0);
+                }
+            }
+        },
+
+        _uninstallEvent: function(type) {
+            // If the view requires counting of installed mouse events,
+            // decrease the counters now according to mouseFlags
+            var counters = this._eventCounters;
+            if (counters) {
+                for (var key in mouseFlags)
+                    counters[key] -= mouseFlags[key][type] || 0;
+            }
+        },
 
         statics: {
             /**

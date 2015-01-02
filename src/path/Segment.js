@@ -32,11 +32,11 @@ var Segment = Base.extend(/** @lends Segment# */{
      * @name Segment#initialize
      * @param {Point} [point={x: 0, y: 0}] the anchor point of the segment
      * @param {Point} [handleIn={x: 0, y: 0}] the handle point relative to the
-     *        anchor point of the segment that describes the in tangent of the
-     *        segment.
+     * anchor point of the segment that describes the in tangent of the
+     * segment
      * @param {Point} [handleOut={x: 0, y: 0}] the handle point relative to the
-     *        anchor point of the segment that describes the out tangent of the
-     *        segment.
+     * anchor point of the segment that describes the out tangent of the
+     * segment
      *
      * @example {@paperscript}
      * var handleIn = new Point(-80, -100);
@@ -56,7 +56,7 @@ var Segment = Base.extend(/** @lends Segment# */{
      *
      * @name Segment#initialize
      * @param {Object} object an object literal containing properties to
-     * be set on the segment.
+     * be set on the segment
      *
      * @example {@paperscript}
      * // Creating segments using object notation:
@@ -80,18 +80,18 @@ var Segment = Base.extend(/** @lends Segment# */{
      *
      * @param {Number} x the x coordinate of the segment point
      * @param {Number} y the y coordinate of the segment point
-     * @param {Number} inX the x coordinate of the the handle point relative
-     *        to the anchor point of the segment that describes the in tangent
-     *        of the segment.
-     * @param {Number} inY the y coordinate of the the handle point relative
-     *        to the anchor point of the segment that describes the in tangent
-     *        of the segment.
-     * @param {Number} outX the x coordinate of the the handle point relative
-     *        to the anchor point of the segment that describes the out tangent
-     *        of the segment.
-     * @param {Number} outY the y coordinate of the the handle point relative
-     *        to the anchor point of the segment that describes the out tangent
-     *        of the segment.
+     * @param {Number} inX the x coordinate of the the handle point relative to
+     * the anchor point of the segment that describes the in tangent of the
+     * segment
+     * @param {Number} inY the y coordinate of the the handle point relative to
+     * the anchor point of the segment that describes the in tangent of the
+     * segment
+     * @param {Number} outX the x coordinate of the the handle point relative to
+     * the anchor point of the segment that describes the out tangent of the
+     * segment
+     * @param {Number} outY the y coordinate of the the handle point relative to
+     * the anchor point of the segment that describes the out tangent of the
+     * segment
      *
      * @example {@paperscript}
      * var inX = -80;
@@ -119,7 +119,7 @@ var Segment = Base.extend(/** @lends Segment# */{
             // Nothing
         } else if (count === 1) {
             // Note: This copies from existing segments through accessors.
-            if (arg0.point) {
+            if ('point' in arg0) {
                 point = arg0.point;
                 handleIn = arg0.handleIn;
                 handleOut = arg0.handleOut;
@@ -145,9 +145,10 @@ var Segment = Base.extend(/** @lends Segment# */{
     },
 
     _serialize: function(options) {
-        // If the Segment is linear, only serialize point, otherwise handles too
-        return Base.serialize(this.isLinear() ? this._point
-                : [this._point, this._handleIn, this._handleOut],
+        // If it is has no handles, only serialize point, otherwise handles too.
+        return Base.serialize(this.hasHandles()
+                ? [this._point, this._handleIn, this._handleOut]
+                : this._point,
                 options, true);
     },
 
@@ -209,8 +210,6 @@ var Segment = Base.extend(/** @lends Segment# */{
         var point = Point.read(arguments);
         // See #setPoint:
         this._handleIn.set(point.x, point.y);
-        // Update corner accordingly
-        // this.corner = !this._handleIn.isColinear(this._handleOut);
     },
 
     /**
@@ -228,79 +227,28 @@ var Segment = Base.extend(/** @lends Segment# */{
         var point = Point.read(arguments);
         // See #setPoint:
         this._handleOut.set(point.x, point.y);
-        // Update corner accordingly
-        // this.corner = !this._handleIn.isColinear(this._handleOut);
     },
 
-    // TODO: Rename this to #corner?
     /**
-     * Specifies whether the segment has no handles defined, meaning it connects
-     * two straight lines.
+     * Checks if the segment has any curve handles set.
      *
-     * @type Boolean
-     * @bean
+     * @return {Boolean} {@true if the segment has handles set}
+     * @see Segment#getHandleIn()
+     * @see Segment#getHandleOut()
+     * @see Curve#hasHandles()
+     * @see Path#hasHandles()
      */
-    isLinear: function() {
-        return this._handleIn.isZero() && this._handleOut.isZero();
-    },
-
-    setLinear: function(linear) {
-        if (linear) {
-            this._handleIn.set(0, 0);
-            this._handleOut.set(0, 0);
-        } else {
-            // TODO: smooth() ?
-        }
-    },
-
-    // DOCS: #isColinear(segment), #isOrthogonal(), #isArc()
-
-    /**
-     * Returns true if the the two segments are the beginning of two lines and
-     * if these two lines are running parallel.
-     */
-    isColinear: function(segment) {
-        var next1 = this.getNext(),
-            next2 = segment.getNext();
-        return this._handleOut.isZero() && next1._handleIn.isZero()
-                && segment._handleOut.isZero() && next2._handleIn.isZero()
-                && next1._point.subtract(this._point).isColinear(
-                    next2._point.subtract(segment._point));
-    },
-
-    isOrthogonal: function() {
-        var prev = this.getPrevious(),
-            next = this.getNext();
-        return prev._handleOut.isZero() && this._handleIn.isZero()
-            && this._handleOut.isZero() && next._handleIn.isZero()
-            && this._point.subtract(prev._point).isOrthogonal(
-                    next._point.subtract(this._point));
+    hasHandles: function() {
+        return !this._handleIn.isZero() || !this._handleOut.isZero();
     },
 
     /**
-     * Returns true if the segment at the given index is the beginning of an
-     * orthogonal arc segment. The code looks at the length of the handles and
-     * their relation to the distance to the imaginary corner point. If the
-     * relation is kappa, then it's an arc.
+     * Clears the segment's handles by setting their coordinates to zero,
+     * turning the segment into a corner.
      */
-    isArc: function() {
-        var next = this.getNext(),
-            handle1 = this._handleOut,
-            handle2 = next._handleIn,
-            kappa = /*#=*/Numerical.KAPPA;
-        if (handle1.isOrthogonal(handle2)) {
-            var from = this._point,
-                to = next._point,
-                // Find the corner point by intersecting the lines described
-                // by both handles:
-                corner = new Line(from, handle1, true).intersect(
-                        new Line(to, handle2, true), true);
-            return corner && Numerical.isZero(handle1.getLength() /
-                    corner.subtract(from).getLength() - kappa)
-                && Numerical.isZero(handle2.getLength() /
-                    corner.subtract(to).getLength() - kappa);
-        }
-        return false;
+    clearHandles: function() {
+        this._handleIn.set(0, 0);
+        this._handleOut.set(0, 0);
     },
 
     _selectionState: 0,
@@ -445,10 +393,45 @@ var Segment = Base.extend(/** @lends Segment# */{
     },
 
     /**
-     * Returns the reversed the segment, without modifying the segment itself.
+     * Checks if the this is the first segment in the {@link Path#segments}
+     * array.
+     *
+     * @return {Boolean} {@true if this is the first segment}
+     */
+    isFirst: function() {
+        return this._index === 0;
+    },
+
+    /**
+     * Checks if the this is the last segment in the {@link Path#segments}
+     * array.
+     *
+     * @return {Boolean} {@true if this is the last segment}
+     */
+    isLast: function() {
+        var path = this._path;
+        return path && this._index === path._segments.length - 1 || false;
+    },
+
+    /**
+     * Reverses the {@link #handleIn} and {@link #handleOut} vectors of this
+     * segment. Note: the actual segment is modified, no copy is created.
      * @return {Segment} the reversed segment
      */
     reverse: function() {
+        var handleIn = this._handleIn,
+            handleOut = this._handleOut,
+            inX = handleIn._x,
+            inY = handleIn._y;
+        handleIn.set(handleOut._x, handleOut._y);
+        handleOut.set(inX, inY);
+    },
+
+    /**
+     * Returns the reversed the segment, without modifying the segment itself.
+     * @return {Segment} the reversed segment
+     */
+    reversed: function() {
         return new Segment(this._point, this._handleOut, this._handleIn);
     },
 
