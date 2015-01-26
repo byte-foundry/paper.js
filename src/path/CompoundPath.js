@@ -158,16 +158,16 @@ var CompoundPath = PathItem.extend(/** @lends CompoundPath# */{
      * 0 and 1, but extrapolation is possible too.
      */
     interpolate: function(compoundpath0, compoundpath1, coef) {
-       for (var i = 0, l = this._children.length; i < l; i++) {
+        for (var i = 0, l = this._children.length; i < l; i++) {
             // The number of children should be the same everywhere,
             // but we're going to try our best anyway
-            if ( !path0._children[i] || !path1._children[i] ) {
+            if ( !compoundpath0._children[i] || !compoundpath1._children[i] ) {
                 break;
             }
 
             this._children[i].interpolate(
-                path0._children[i],
-                path1._children[i],
+                compoundpath0._children[i],
+                compoundpath1._children[i],
                 coef
             );
         }
