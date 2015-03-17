@@ -9,7 +9,7 @@
  *
  * All rights reserved.
  *
- * Date: Sat Feb 28 19:20:48 2015 +0100
+ * Date: Mon Jan 26 16:21:37 2015 +0100
  *
  ***
  *
@@ -31,6 +31,10 @@
  */
 
 var paper = new function(undefined) {
+
+		  var noCanvas =
+			  ( typeof process === 'object' && process.browser !== true ) ||
+			  ( typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope );
 
 var Base = new function() {
 	var hidden = /^(statics|enumerable|beans|preserve)$/,
@@ -136,7 +140,7 @@ var Base = new function() {
 
 	function set(obj, props, exclude) {
 		for (var key in props)
-			if (props.hasOwnProperty(key) && !(exclude && exclude[key]))
+			if (props.hasOwnProperty(key) && (!exclude || !exclude[key]))
 				obj[key] = props[key];
 		return obj;
 	}
@@ -219,8 +223,10 @@ var Base = new function() {
 						|| ctor.name === 'Object');
 			},
 
-			pick: function(a, b) {
-				return a !== undefined ? a : b;
+			pick: function() {
+				for (var i = 0, l = arguments.length; i < l; i++)
+					if (arguments[i] !== undefined)
+						return arguments[i];
 			}
 		}
 	});
@@ -698,6 +704,9 @@ var PaperScope = Base.extend({
 		this._id = PaperScope._id++;
 		PaperScope._scopes[this._id] = this;
 		var proto = PaperScope.prototype;
+		if ( noCanvas ) {
+			return;
+		}
 		if (!this.support) {
 			var ctx = CanvasProvider.getContext(1, 1);
 			proto.support = {
@@ -5314,6 +5323,24 @@ var Segment = Base.extend({
 		this._changed();
 	},
 
+	interpolate: function(segment0, segment1, coef) {
+		var dxPoint = segment1._point._x - segment0._point._x,
+			dyPoint = segment1._point._y - segment0._point._y,
+			dxHandleIn = segment1._handleIn._x - segment0._handleIn._x,
+			dyHandleIn = segment1._handleIn._y - segment0._handleIn._y,
+			dxHandleOut = segment1._handleOut._x - segment0._handleOut._x,
+			dyHandleOut = segment1._handleOut._y - segment0._handleOut._y;
+
+		this._point._x = segment0._point._x + dxPoint * coef;
+		this._point._y = segment0._point._y + dyPoint * coef;
+		this._handleIn._x = segment0._handleIn._x + dxHandleIn * coef;
+		this._handleIn._y = segment0._handleIn._y + dyHandleIn * coef;
+		this._handleOut._x = segment0._handleOut._x + dxHandleOut * coef;
+		this._handleOut._y = segment0._handleOut._y + dyHandleOut * coef;
+
+		this._changed();
+	},
+
 	_transformCoordinates: function(matrix, coords, change) {
 		var point = this._point,
 			handleIn = !change || !this._handleIn.isZero()
@@ -7165,6 +7192,22 @@ var Path = PathItem.extend({
 		return this;
 	},
 
+	interpolate: function(path0, path1, coef) {
+		for (var i = 0, l = this._segments.length; i < l; i++) {
+			if ( !path0._segments[i] || !path1._segments[i] ) {
+				break;
+			}
+
+			this._segments[i].interpolate(
+				path0._segments[i],
+				path1._segments[i],
+				coef
+			);
+		}
+
+		this._changed(9);
+	},
+
 	toShape: function(insert) {
 		if (!this._closed)
 			return null;
@@ -8304,6 +8347,20 @@ var CompoundPath = PathItem.extend({
 			return path;
 		} else {
 			return reduce.base.call(this);
+		}
+	},
+
+	interpolate: function(compoundpath0, compoundpath1, coef) {
+		for (var i = 0, l = this._children.length; i < l; i++) {
+			if ( !compoundpath0._children[i] || !compoundpath1._children[i] ) {
+				break;
+			}
+
+			this._children[i].interpolate(
+				compoundpath0._children[i],
+				compoundpath1._children[i],
+				coef
+			);
 		}
 	},
 
@@ -10385,20 +10442,23 @@ var DomEvent = {
 };
 
 DomEvent.requestAnimationFrame = new function() {
-	var nativeRequest = DomElement.getPrefixed(window, 'requestAnimationFrame'),
+	var nativeRequest = typeof window === 'object' &&
+			DomElement.getPrefixed(window, 'requestAnimationFrame'),
 		requested = false,
 		callbacks = [],
 		focused = true,
 		timer;
 
-	DomEvent.add(window, {
-		focus: function() {
-			focused = true;
-		},
-		blur: function() {
-			focused = false;
-		}
-	});
+	if ( typeof window === 'object' ) {
+		DomEvent.add(window, {
+			focus: function() {
+				focused = true;
+			},
+			blur: function() {
+				focused = false;
+			}
+		});
+	}
 
 	function handleCallbacks() {
 		for (var i = callbacks.length - 1; i >= 0; i--) {
@@ -10441,52 +10501,59 @@ var View = Base.extend(Emitter, {
 		this._scope = project._scope;
 		this._element = element;
 		var size;
-		if (!this._pixelRatio)
-			this._pixelRatio = window.devicePixelRatio || 1;
-		this._id = element.getAttribute('id');
-		if (this._id == null)
-			element.setAttribute('id', this._id = 'view-' + View._id++);
-		DomEvent.add(element, this._viewEvents);
-		var none = 'none';
-		DomElement.setPrefixed(element.style, {
-			userSelect: none,
-			touchAction: none,
-			touchCallout: none,
-			contentZooming: none,
-			userDrag: none,
-			tapHighlightColor: 'rgba(0,0,0,0)'
-		});
-
-		function getSize(name) {
-			return element[name] || parseInt(element.getAttribute(name), 10);
-		};
-
-		function getCanvasSize() {
-			var size = DomElement.getSize(element);
-			return size.isNaN() || size.isZero()
-					? new Size(getSize('width'), getSize('height'))
-					: size;
-		};
-
-		if (PaperScope.hasAttribute(element, 'resize')) {
-			var that = this;
-			DomEvent.add(window, this._windowEvents = {
-				resize: function() {
-					that.setViewSize(getCanvasSize());
-				}
+		if ( !noCanvas ) {
+			if (!this._pixelRatio)
+				this._pixelRatio = window.devicePixelRatio || 1;
+			this._id = element.getAttribute('id');
+			if (this._id == null)
+				element.setAttribute('id', this._id = 'view-' + View._id++);
+			DomEvent.add(element, this._viewEvents);
+			var none = 'none';
+			DomElement.setPrefixed(element.style, {
+				userSelect: none,
+				touchAction: none,
+				touchCallout: none,
+				contentZooming: none,
+				userDrag: none,
+				tapHighlightColor: 'rgba(0,0,0,0)'
 			});
-		}
-		this._setViewSize(size = getCanvasSize());
-		if (PaperScope.hasAttribute(element, 'stats')
-				&& typeof Stats !== 'undefined') {
-			this._stats = new Stats();
-			var stats = this._stats.domElement,
-				style = stats.style,
-				offset = DomElement.getOffset(element);
-			style.position = 'absolute';
-			style.left = offset.x + 'px';
-			style.top = offset.y + 'px';
-			document.body.appendChild(stats);
+
+			function getSize(name) {
+				return element[name] || parseInt(element.getAttribute(name), 10);
+			};
+
+			function getCanvasSize() {
+				var size = DomElement.getSize(element);
+				return size.isNaN() || size.isZero()
+						? new Size(getSize('width'), getSize('height'))
+						: size;
+			};
+
+			if (PaperScope.hasAttribute(element, 'resize')) {
+				var that = this;
+				DomEvent.add(window, this._windowEvents = {
+					resize: function() {
+						that.setViewSize(getCanvasSize());
+					}
+				});
+			}
+			this._setViewSize(size = getCanvasSize());
+			if (PaperScope.hasAttribute(element, 'stats')
+					&& typeof Stats !== 'undefined') {
+				this._stats = new Stats();
+				var stats = this._stats.domElement,
+					style = stats.style,
+					offset = DomElement.getOffset(element);
+				style.position = 'absolute';
+				style.left = offset.x + 'px';
+				style.top = offset.y + 'px';
+				document.body.appendChild(stats);
+
+		} else {
+			if (!this._pixelRatio)
+				this._pixelRatio = 1;
+			this._id = 'view-' + View._id++;
+			size = new Size(element.width, element.height);
 		}
 		View._views.push(this);
 		View._viewsById[this._id] = this;
@@ -10725,6 +10792,10 @@ var View = Base.extend(Emitter, {
 		}
 	}
 }, new function() {
+	if ( noCanvas ) {
+		return;
+	}
+
 	var tool,
 		prevFocus,
 		tempFocus,
@@ -10862,18 +10933,20 @@ var CanvasView = View.extend({
 	_class: 'CanvasView',
 
 	initialize: function CanvasView(project, canvas) {
-		if (!(canvas instanceof HTMLCanvasElement)) {
-			var size = Size.read(arguments, 1);
-			if (size.isZero())
-				throw new Error(
-						'Cannot create CanvasView with the provided argument: '
-						+ [].slice.call(arguments, 1));
-			canvas = CanvasProvider.getCanvas(size);
+		if ( !noCanvas ) {
+			if (!(canvas instanceof HTMLCanvasElement)) {
+				var size = Size.read(arguments);
+				if (size.isZero())
+					throw new Error(
+							'Cannot create CanvasView with the provided argument: '
+							+ [].slice.call(arguments, 1));
+				canvas = CanvasProvider.getCanvas(size);
+			}
+			this._context = canvas.getContext('2d');
 		}
-		this._context = canvas.getContext('2d');
 		this._eventCounters = {};
 		this._pixelRatio = 1;
-		if (!/^off|false$/.test(PaperScope.getAttribute(canvas, 'hidpi'))) {
+		if (!noCanvas && !/^off|false$/.test(PaperScope.getAttribute(canvas, 'hidpi'))) {
 			var deviceRatio = window.devicePixelRatio || 1,
 				backingStoreRatio = DomElement.getPrefixed(this._context,
 						'backingStorePixelRatio') || 1;
@@ -11084,6 +11157,9 @@ var KeyEvent = Event.extend({
 });
 
 var Key = new function() {
+	if ( noCanvas ) {
+		return;
+	}
 
 	var specialKeys = {
 		8: 'backspace',
@@ -11501,6 +11577,9 @@ var CanvasProvider = {
 			height = width.height;
 			width = width.width;
 		}
+		if ( noCanvas ) {
+			return { getContext: function() {} };
+		}
 		if (this.canvases.length) {
 			canvas = this.canvases.pop();
 		} else {
@@ -11530,6 +11609,10 @@ var CanvasProvider = {
 };
 
 var BlendMode = new function() {
+	if ( noCanvas ) {
+		return;
+	}
+
 	var min = Math.min,
 		max = Math.max,
 		abs = Math.abs,
