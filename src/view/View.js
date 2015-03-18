@@ -56,7 +56,7 @@ var View = Base.extend(Emitter, /** @lends View# */{
 
             function getSize(name) {
                 return element[name] || parseInt(element.getAttribute(name), 10);
-            };
+            }
 
             function getCanvasSize() {
                 // Try visible size first, since that will help handling previously
@@ -68,7 +68,7 @@ var View = Base.extend(Emitter, /** @lends View# */{
                         // Reading the attributes should still work.
                         ? new Size(getSize('width'), getSize('height'))
                         : size;
-            };
+            }
 
             // If the element has the resize attribute, listen to resize events and
             // update its coordinate space accordingly
@@ -97,6 +97,10 @@ var View = Base.extend(Emitter, /** @lends View# */{
                 style.left = offset.x + 'px';
                 style.top = offset.y + 'px';
                 document.body.appendChild(stats);
+<<<<<<< HEAD
+=======
+            }
+>>>>>>> f93c68a2fe435c8a6319ba93998dcd88540b8c0c
 
         } else { // noCanvas === true
             // Sub-classes may set _pixelRatio first
