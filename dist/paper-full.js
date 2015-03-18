@@ -9,7 +9,7 @@
  *
  * All rights reserved.
  *
- * Date: Tue Mar 17 19:01:31 2015 +0100
+ * Date: Wed Mar 18 10:25:56 2015 +0100
  *
  ***
  *
@@ -10548,10 +10548,7 @@ var View = Base.extend(Emitter, {
 				style.left = offset.x + 'px';
 				style.top = offset.y + 'px';
 				document.body.appendChild(stats);
-<<<<<<< HEAD
-=======
 			}
->>>>>>> f93c68a2fe435c8a6319ba93998dcd88540b8c0c
 
 		} else {
 			if (!this._pixelRatio)
