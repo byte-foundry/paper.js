@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Simplify Closed Shape</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script type="text/javascript" src="../../dist/paper-full.js"></script>
+    <script type="text/paperscript" canvas="canvas">
+        var path = new Path.Star(
+            new Point(50, 50),
+            4,
+            10,
+            40
+        );
+
+        path.fillColor = 'black';
+        path.simplify(0.1);
+
+        console.log(path.exportSVG());
+    </script>
+</head>
+<body>
+    <canvas id="canvas" resize></canvas>
+</body>
+</html>
