@@ -97,10 +97,7 @@ var View = Base.extend(Emitter, /** @lends View# */{
                 style.left = offset.x + 'px';
                 style.top = offset.y + 'px';
                 document.body.appendChild(stats);
-<<<<<<< HEAD
-=======
             }
->>>>>>> f93c68a2fe435c8a6319ba93998dcd88540b8c0c
 
         } else { // noCanvas === true
             // Sub-classes may set _pixelRatio first
