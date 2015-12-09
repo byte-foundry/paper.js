@@ -9,7 +9,7 @@
  *
  * All rights reserved.
  *
- * Date: Sun Oct 25 11:23:38 2015 +0100
+ * Date: Mon Dec 7 15:26:30 2015 +0100
  *
  ***
  *
@@ -31,6 +31,10 @@
  */
 
 var paper = new function(undefined) {
+
+		  var noCanvas =
+			  ( typeof process === 'object' && process.browser !== true ) ||
+			  ( typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope );
 
 var Base = new function() {
 	var hidden = /^(statics|enumerable|beans|preserve)$/,
@@ -88,7 +92,7 @@ var Base = new function() {
 				val = dest[val.substring(1)] || val;
 			var isFunc = typeof val === 'function',
 				res = val,
-				prev = preserve || isFunc && !val.base
+				prev = preserve || isFunc
 						? (val && val.get ? name in dest : dest[name])
 						: null,
 				bean;
@@ -136,7 +140,7 @@ var Base = new function() {
 
 	function set(obj, props, exclude) {
 		for (var key in props)
-			if (props.hasOwnProperty(key) && !(exclude && exclude[key]))
+			if (props.hasOwnProperty(key) && (!exclude || !exclude[key]))
 				obj[key] = props[key];
 		return obj;
 	}
@@ -161,22 +165,19 @@ var Base = new function() {
 
 		extend: function() {
 			var base = this,
-				ctor,
-				proto;
+				ctor;
 			for (var i = 0, l = arguments.length; i < l; i++)
 				if (ctor = arguments[i].initialize)
 					break;
 			ctor = ctor || function() {
 				base.apply(this, arguments);
 			};
-			proto = ctor.prototype = create(this.prototype);
-			define(proto, 'constructor',
+			ctor.prototype = create(this.prototype);
+			ctor.base = base;
+			define(ctor.prototype, 'constructor',
 					{ value: ctor, writable: true, configurable: true });
 			inject(ctor, this, true);
-			if (arguments.length)
-				this.inject.apply(ctor, arguments);
-			ctor.base = base;
-			return ctor;
+			return arguments.length ? this.inject.apply(ctor, arguments) : ctor;
 		}
 	}, true).inject({
 		inject: function() {
@@ -222,8 +223,10 @@ var Base = new function() {
 						|| ctor.name === 'Object');
 			},
 
-			pick: function(a, b) {
-				return a !== undefined ? a : b;
+			pick: function() {
+				for (var i = 0, l = arguments.length; i < l; i++)
+					if (arguments[i] !== undefined)
+						return arguments[i];
 			}
 		}
 	});
@@ -705,6 +708,9 @@ var PaperScope = Base.extend({
 		this._id = PaperScope._id++;
 		PaperScope._scopes[this._id] = this;
 		var proto = PaperScope.prototype;
+		if ( noCanvas ) {
+			return;
+		}
 		if (!this.support) {
 			var ctx = CanvasProvider.getContext(1, 1);
 			proto.support = {
@@ -859,7 +865,7 @@ var PaperScopeItem = Base.extend(Emitter, {
 
 var Formatter = Base.extend({
 	initialize: function(precision) {
-		this.precision = precision || 5;
+		this.precision = Base.pick(precision, 5);
 		this.multiplier = Math.pow(10, this.precision);
 	},
 
@@ -1045,10 +1051,10 @@ var Numerical = new function() {
 				var ec = 1 + MACHINE_EPSILON,
 					x0, q, qd, t, r, s, tmp;
 				x = -(b / a) / 3;
-				tmp = a * x,
-				b1 = tmp + b,
-				c2 = b1 * x + c,
-				qd = (tmp + b1) * x + c2,
+				tmp = a * x;
+				b1 = tmp + b;
+				c2 = b1 * x + c;
+				qd = (tmp + b1) * x + c2;
 				q = c2 * x + d;
 				t = q /a;
 				r = pow(abs(t), 1/3);
@@ -1059,10 +1065,10 @@ var Numerical = new function() {
 				if (x0 !== x) {
 					do {
 						x = x0;
-						tmp = a * x,
-						b1 = tmp + b,
-						c2 = b1 * x + c,
-						qd = (tmp + b1) * x + c2,
+						tmp = a * x;
+						b1 = tmp + b;
+						c2 = b1 * x + c;
+						qd = (tmp + b1) * x + c2;
 						q = c2 * x + d;
 						x0 = qd === 0 ? x : x - q / qd / ec;
 						if (x0 === x) {
@@ -3094,7 +3100,7 @@ var Item = Base.extend(Emitter, {
 
 	_getBounds: function(getter, matrix, cacheItem) {
 		var children = this._children;
-		if (!children || children.length == 0)
+		if (!children || children.length === 0)
 			return new Rectangle();
 		Item._updateBoundsCache(this, cacheItem);
 		var x1 = Infinity,
@@ -3125,8 +3131,8 @@ var Item = Base.extend(Emitter, {
 		matrix.translate(center);
 		if (rect.width != bounds.width || rect.height != bounds.height) {
 			matrix.scale(
-					bounds.width != 0 ? rect.width / bounds.width : 1,
-					bounds.height != 0 ? rect.height / bounds.height : 1);
+					bounds.width !== 0 ? rect.width / bounds.width : 1,
+					bounds.height !== 0 ? rect.height / bounds.height : 1);
 		}
 		center = bounds.getCenter();
 		matrix.translate(-center.x, -center.y);
@@ -3397,15 +3403,17 @@ var Item = Base.extend(Emitter, {
 			topLeft = bounds.getTopLeft().floor(),
 			bottomRight = bounds.getBottomRight().ceil(),
 			size = new Size(bottomRight.subtract(topLeft)),
-			canvas = CanvasProvider.getCanvas(size.multiply(scale)),
-			ctx = canvas.getContext('2d'),
-			matrix = new Matrix().scale(scale).translate(topLeft.negate());
-		ctx.save();
-		matrix.applyToContext(ctx);
-		this.draw(ctx, new Base({ matrices: [matrix] }));
-		ctx.restore();
-		var raster = new Raster(Item.NO_INSERT);
-		raster.setCanvas(canvas);
+			raster = new Raster(Item.NO_INSERT);
+		if (!size.isZero()) {
+			var canvas = CanvasProvider.getCanvas(size.multiply(scale)),
+				ctx = canvas.getContext('2d'),
+				matrix = new Matrix().scale(scale).translate(topLeft.negate());
+			ctx.save();
+			matrix.applyToContext(ctx);
+			this.draw(ctx, new Base({ matrices: [matrix] }));
+			ctx.restore();
+			raster.setCanvas(canvas);
+		}
 		raster.transform(new Matrix().translate(topLeft.add(size.divide(2)))
 				.scale(1 / scale));
 		raster.insertAbove(this);
@@ -5336,6 +5344,24 @@ var Segment = Base.extend({
 		this._changed();
 	},
 
+	interpolate: function(segment0, segment1, coef) {
+		var dxPoint = segment1._point._x - segment0._point._x,
+			dyPoint = segment1._point._y - segment0._point._y,
+			dxHandleIn = segment1._handleIn._x - segment0._handleIn._x,
+			dyHandleIn = segment1._handleIn._y - segment0._handleIn._y,
+			dxHandleOut = segment1._handleOut._x - segment0._handleOut._x,
+			dyHandleOut = segment1._handleOut._y - segment0._handleOut._y;
+
+		this._point._x = segment0._point._x + dxPoint * coef;
+		this._point._y = segment0._point._y + dyPoint * coef;
+		this._handleIn._x = segment0._handleIn._x + dxHandleIn * coef;
+		this._handleIn._y = segment0._handleIn._y + dyHandleIn * coef;
+		this._handleOut._x = segment0._handleOut._x + dxHandleOut * coef;
+		this._handleOut._y = segment0._handleOut._y + dyHandleOut * coef;
+
+		this._changed();
+	},
+
 	_transformCoordinates: function(matrix, coords, change) {
 		var point = this._point,
 			handleIn = !change || !this._handleIn.isZero()
@@ -6058,7 +6084,7 @@ new function() {
 		statics: {
 			evaluateMethods: methods
 		}
-	})
+	});
 },
 new function() {
 
@@ -6165,7 +6191,7 @@ new function() {
 
 		getParameterAt: function(v, offset, start) {
 			if (start === undefined)
-				start = offset < 0 ? 1 : 0
+				start = offset < 0 ? 1 : 0;
 			if (offset === 0)
 				return start;
 			var abs = Math.abs,
@@ -6333,7 +6359,7 @@ new function() {
 			var distRatio = dist1 / dist2;
 			hull = [
 				distRatio >= 2 ? [p0, p1, p3]
-				: distRatio <= .5 ? [p0, p2, p3]
+				: distRatio <= 0.5 ? [p0, p2, p3]
 				: [p0, p1, p2, p3],
 				[p0, p3]
 			];
@@ -6967,7 +6993,7 @@ var PathItem = Item.extend({
 
 	getCrossings: function(path) {
 		return this.getIntersections(path, function(inter) {
-			return inter.isCrossing();
+			return inter.isOverlap() || inter.isCrossing();
 		});
 	},
 
@@ -7001,7 +7027,7 @@ var PathItem = Item.extend({
 
 		this.clear();
 
-		for (var i = 0, l = parts && parts.length; i < l; i++) {
+		for (var i = 0, l = parts.length; i < l; i++) {
 			var part = parts[i],
 				command = part[0],
 				lower = command.toLowerCase();
@@ -7069,8 +7095,8 @@ var PathItem = Item.extend({
 			case 'a':
 				for (var j = 0; j < length; j += 7) {
 					this.arcTo(current = getPoint(j + 5),
-							new Size(+coords[j], +coords[j + 1]),
-							+coords[j + 2], +coords[j + 4], +coords[j + 3]);
+							new Size(+coords[0], +coords[1]),
+							+coords[2], +coords[4], +coords[3]);
 				}
 				break;
 			case 'z':
@@ -7312,7 +7338,8 @@ var Path = PathItem.extend({
 		}
 		if (curves) {
 			var total = this._countCurves(),
-				from = index + amount - 1 === total ? index - 1 : index,
+				from = index > 0 && index + amount - 1 === total ? index - 1
+					: index,
 				start = from,
 				to = Math.min(from + amount, total);
 			if (segs._curves) {
@@ -7545,7 +7572,7 @@ var Path = PathItem.extend({
 			if (typeof arg === 'number')
 				arg = this.getLocationAt(arg);
 			if (!arg)
-				return null
+				return null;
 			index = arg.index;
 			parameter = arg.parameter;
 		}
@@ -7597,20 +7624,19 @@ var Path = PathItem.extend({
 			var segments = path._segments,
 				last1 = this.getLastSegment(),
 				last2 = path.getLastSegment();
-			if (!last2)
-				return this;
-			if (last1 && last1._point.equals(last2._point))
+			if (last1._point.equals(last2._point))
 				path.reverse();
-			var first2 = path.getFirstSegment();
-			if (last1 && last1._point.equals(first2._point)) {
+			var first1,
+				first2 = path.getFirstSegment();
+			if (last1._point.equals(first2._point)) {
 				last1.setHandleOut(first2._handleOut);
 				this._add(segments.slice(1));
 			} else {
-				var first1 = this.getFirstSegment();
-				if (first1 && first1._point.equals(first2._point))
+				first1 = this.getFirstSegment();
+				if (first1._point.equals(first2._point))
 					path.reverse();
 				last2 = path.getLastSegment();
-				if (first1 && first1._point.equals(last2._point)) {
+				if (first1._point.equals(last2._point)) {
 					first1.setHandleIn(last2._handleIn);
 					this._add(segments.slice(0, segments.length - 1), 0);
 				} else {
@@ -7628,7 +7654,6 @@ var Path = PathItem.extend({
 			last.remove();
 			this.setClosed(true);
 		}
-		return this;
 	},
 
 	toShape: function(insert) {
@@ -8979,12 +9004,8 @@ PathItem.inject(new function() {
 		if (_path2 && /^(subtract|exclude)$/.test(operation)
 				^ (_path2.isClockwise() !== _path1.isClockwise()))
 			_path2.reverse();
-		var intersections = CurveLocation.expand(
-			_path1.getIntersections(_path2, function(inter) {
-				return _path2 && inter.isOverlap() || inter.isCrossing();
-			})
-		);
-		divideLocations(intersections);
+		var crossings = CurveLocation.expand(_path1.getCrossings(_path2));
+		divideLocations(crossings);
 
 		var segments = [],
 			monoCurves = [];
@@ -9000,9 +9021,9 @@ PathItem.inject(new function() {
 		collect(_path1._children || [_path1]);
 		if (_path2)
 			collect(_path2._children || [_path2]);
-		for (var i = 0, l = intersections.length; i < l; i++) {
-			propagateWinding(intersections[i]._segment, _path1, _path2,
-					monoCurves, operation);
+		for (var i = 0, l = crossings.length; i < l; i++) {
+			propagateWinding(crossings[i]._segment, _path1, _path2, monoCurves,
+					operation);
 		}
 		for (var i = 0, l = segments.length; i < l; i++) {
 			var segment = segments[i];
@@ -9021,9 +9042,7 @@ PathItem.inject(new function() {
 			return null;
 		var _path1 = preparePath(path1, false),
 			_path2 = preparePath(path2, false),
-			intersections = _path1.getIntersections(_path2, function(inter) {
-				return inter.isOverlap() || inter.isCrossing();
-			}),
+			crossings = _path1.getCrossings(_path2),
 			sub = operation === 'subtract',
 			paths = [];
 
@@ -9034,8 +9053,8 @@ PathItem.inject(new function() {
 			}
 		}
 
-		for (var i = intersections.length - 1; i >= 0; i--) {
-			var path = intersections[i].split();
+		for (var i = crossings.length - 1; i >= 0; i--) {
+			var path = crossings[i].split();
 			if (path) {
 				if (addPath(path))
 					path.getFirstSegment().setHandleIn(0, 0);
@@ -9339,9 +9358,12 @@ PathItem.inject(new function() {
 				path.firstSegment.setHandleIn(seg._handleIn);
 				path.setClosed(true);
 			} else if (path) {
-				console.error('Boolean operation resulted in open path',
-						'segments =', path._segments.length,
-						'length =', path.getLength());
+				var length = path.getLength();
+				if (length >= 2e-7) {
+					console.error('Boolean operation resulted in open path',
+							'segments =', path._segments.length,
+							'length =', length);
+				}
 				path = null;
 			}
 			if (path && (path._segments.length > 8
@@ -9597,7 +9619,7 @@ var PathIterator = Base.extend({
 		var i, j = this.index;
 		for (;;) {
 			i = j;
-			if (j == 0 || this.parts[--j].offset < offset)
+			if (j === 0 || this.parts[--j].offset < offset)
 				break;
 		}
 		for (var l = this.parts.length; i < l; i++) {
@@ -10980,20 +11002,23 @@ var DomEvent = {
 };
 
 DomEvent.requestAnimationFrame = new function() {
-	var nativeRequest = DomElement.getPrefixed(window, 'requestAnimationFrame'),
+	var nativeRequest = typeof window === 'object' &&
+			DomElement.getPrefixed(window, 'requestAnimationFrame'),
 		requested = false,
 		callbacks = [],
 		focused = true,
 		timer;
 
-	DomEvent.add(window, {
-		focus: function() {
-			focused = true;
-		},
-		blur: function() {
-			focused = false;
-		}
-	});
+	if ( typeof window === 'object' ) {
+		DomEvent.add(window, {
+			focus: function() {
+				focused = true;
+			},
+			blur: function() {
+				focused = false;
+			}
+		});
+	}
 
 	function handleCallbacks() {
 		for (var i = callbacks.length - 1; i >= 0; i--) {
@@ -11036,6 +11061,7 @@ var View = Base.extend(Emitter, {
 		this._scope = project._scope;
 		this._element = element;
 		var size;
+	   if ( !noCanvas ) {
 		if (!this._pixelRatio)
 			this._pixelRatio = window.devicePixelRatio || 1;
 		this._id = element.getAttribute('id');
@@ -11054,14 +11080,14 @@ var View = Base.extend(Emitter, {
 
 		function getSize(name) {
 			return element[name] || parseInt(element.getAttribute(name), 10);
-		};
+		}
 
 		function getCanvasSize() {
 			var size = DomElement.getSize(element);
 			return size.isNaN() || size.isZero()
 					? new Size(getSize('width'), getSize('height'))
 					: size;
-		};
+		}
 
 		if (PaperScope.hasAttribute(element, 'resize')) {
 			var that = this;
@@ -11083,6 +11109,13 @@ var View = Base.extend(Emitter, {
 			style.top = offset.y + 'px';
 			document.body.appendChild(stats);
 		}
+
+	   } else {
+		if (!this._pixelRatio)
+			this._pixelRatio = 1;
+		this._id = 'view-' + View._id++;
+		size = new Size(element.width, element.height);
+	   }
 		View._views.push(this);
 		View._viewsById[this._id] = this;
 		this._viewSize = size;
@@ -11331,6 +11364,10 @@ var View = Base.extend(Emitter, {
 	}
 },
 new function() {
+	if ( noCanvas ) {
+		return;
+	}
+
 	var tool,
 		prevFocus,
 		tempFocus,
@@ -11507,18 +11544,20 @@ var CanvasView = View.extend({
 	_class: 'CanvasView',
 
 	initialize: function CanvasView(project, canvas) {
-		if (!(canvas instanceof HTMLCanvasElement)) {
-			var size = Size.read(arguments, 1);
-			if (size.isZero())
-				throw new Error(
-						'Cannot create CanvasView with the provided argument: '
-						+ [].slice.call(arguments, 1));
-			canvas = CanvasProvider.getCanvas(size);
+		if ( !noCanvas ) {
+			if (!(canvas instanceof HTMLCanvasElement)) {
+				var size = Size.read(arguments);
+				if (size.isZero())
+					throw new Error(
+							'Cannot create CanvasView with the provided argument: '
+							+ [].slice.call(arguments, 1));
+				canvas = CanvasProvider.getCanvas(size);
+			}
+			this._context = canvas.getContext('2d');
 		}
-		this._context = canvas.getContext('2d');
 		this._eventCounters = {};
 		this._pixelRatio = 1;
-		if (!/^off|false$/.test(PaperScope.getAttribute(canvas, 'hidpi'))) {
+		if (!noCanvas && !/^off|false$/.test(PaperScope.getAttribute(canvas, 'hidpi'))) {
 			var deviceRatio = window.devicePixelRatio || 1,
 				backingStoreRatio = DomElement.getPrefixed(this._context,
 						'backingStorePixelRatio') || 1;
@@ -11740,6 +11779,9 @@ var KeyEvent = Event.extend({
 });
 
 var Key = new function() {
+	if ( noCanvas ) {
+		return;
+	}
 
 	var specialKeys = {
 		8: 'backspace',
@@ -12044,7 +12086,7 @@ var Tool = PaperScopeItem.extend({
 					distance = vector.getLength();
 				if (distance < minDist)
 					return false;
-				if (maxDistance != null && maxDistance != 0) {
+				if (maxDistance != null && maxDistance !== 0) {
 					if (distance > maxDistance) {
 						point = this._point.add(vector.normalize(maxDistance));
 					} else if (matchMaxDistance) {
@@ -12172,6 +12214,9 @@ var CanvasProvider = {
 			height = width.height;
 			width = width.width;
 		}
+		if ( noCanvas ) {
+			return { getContext: function() {} };
+		}
 		if (this.canvases.length) {
 			canvas = this.canvases.pop();
 		} else {
@@ -12201,6 +12246,10 @@ var CanvasProvider = {
 };
 
 var BlendMode = new function() {
+	if ( noCanvas ) {
+		return;
+	}
+
 	var min = Math.min,
 		max = Math.max,
 		abs = Math.abs,
